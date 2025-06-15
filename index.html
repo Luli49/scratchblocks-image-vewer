@@ -1,79 +1,76 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<title>Scratchblocks Viewer PNG statique</title>
+<meta charset="UTF-8">
+<title>Scratchblocks PNG URL Generator</title>
 <script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
 <style>
-  body { font-family: sans-serif; padding: 20px; background: #fff; }
-  #outputImg { border: 1px solid #ccc; margin-top: 10px; }
+  body { font-family: sans-serif; padding: 20px; }
+  textarea { width: 100%; height: 100px; }
 </style>
 </head>
 <body>
 
-<h1>Scratchblocks Viewer (PNG statique côté client)</h1>
-<p>Script dans l’URL (hash) généré en image :</p>
-
-<img id="outputImg" alt="Script PNG" />
+<h1>URL de l'image générée</h1>
+<textarea id="outputUrl" readonly>Chargement...</textarea>
 
 <script>
-  function getParams() {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    return {
-      style: params.get('style') || 'scratch3',
-      script: params.get('script') || ''
+function getParams() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  return {
+    style: params.get('style') || 'scratch3',
+    script: params.get('script') || ''
+  };
+}
+
+async function svgToPngUrl(svg) {
+  return new Promise((resolve) => {
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    const svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
     };
+    img.src = url;
+  });
+}
+
+async function renderScript() {
+  const {style, script} = getParams();
+  if (!script) {
+    document.getElementById('outputUrl').value = 'Aucun script fourni.';
+    return;
   }
 
-  async function svgToPng(svg) {
-    return new Promise((resolve) => {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const img = new Image();
-      const svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
-      const url = URL.createObjectURL(svgBlob);
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.src = url;
-    });
-  }
+  const div = document.createElement('div');
+  div.className = 'scratchblocks';
+  div.textContent = decodeURIComponent(script);
+  document.body.appendChild(div);
 
-  async function renderScript() {
-    const {style, script} = getParams();
-    if(!script) {
-      document.body.insertAdjacentHTML('beforeend', '<p>Aucun script dans l\'URL.</p>');
-      return;
+  scratchblocks.renderMatching('.scratchblocks', { style });
+
+  // Attendre le rendu SVG
+  setTimeout(async () => {
+    const svg = div.querySelector('svg');
+    if (svg) {
+      const dataUrl = await svgToPngUrl(svg);
+      document.getElementById('outputUrl').value = dataUrl;
+    } else {
+      document.getElementById('outputUrl').value = 'Erreur : SVG non généré.';
     }
-    const div = document.createElement('div');
-    div.className = 'scratchblocks';
-    div.textContent = decodeURIComponent(script);
-    document.body.appendChild(div);
+    div.remove();
+  }, 300);
+}
 
-    scratchblocks.renderMatching('.scratchblocks', { style });
-
-    // Attendre que le SVG soit rendu
-    setTimeout(async () => {
-      const svg = div.querySelector('svg');
-      if(svg) {
-        const pngDataUrl = await svgToPng(svg);
-        const img = document.getElementById('outputImg');
-        img.src = pngDataUrl;
-        // Nettoyer la div temporaire
-        div.remove();
-      } else {
-        document.body.insertAdjacentHTML('beforeend', '<p>Erreur : SVG non généré.</p>');
-      }
-    }, 300);
-  }
-
-  renderScript();
+renderScript();
 </script>
 
 </body>
