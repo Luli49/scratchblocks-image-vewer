@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Scratchblocks Image Generator</title>
+  <title>Scratchblocks SVG URL Generator</title>
   <script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
   <style>
     body { margin: 0; padding: 10px; font-family: sans-serif; }
@@ -23,26 +23,12 @@ function getParams() {
   };
 }
 
-async function svgToPngDataUrl(svg) {
-  return new Promise((resolve) => {
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const img = new Image();
-    const svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
-    const url = URL.createObjectURL(svgBlob);
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      // Mettre un fond blanc pour éviter le fond noir
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.src = url;
-  });
+function svgToDataUrl(svg) {
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const encoded = encodeURIComponent(svgData)
+    .replace(/'/g, "%27")
+    .replace(/"/g, "%22");
+  return `data:image/svg+xml;charset=utf-8,${encoded}`;
 }
 
 async function generate() {
@@ -61,12 +47,11 @@ async function generate() {
 
   scratchblocks.renderMatching('.scratchblocks', { style });
 
-  setTimeout(async () => {
+  setTimeout(() => {
     const svg = container.querySelector('svg');
     if (svg) {
-      const dataUrl = await svgToPngDataUrl(svg);
-      const linkDiv = document.getElementById('link');
-      linkDiv.textContent = dataUrl;
+      const dataUrl = svgToDataUrl(svg);
+      document.getElementById('link').textContent = dataUrl;
     } else {
       document.getElementById('link').textContent = 'Erreur : SVG non généré.';
     }
@@ -78,4 +63,3 @@ generate();
 
 </body>
 </html>
-
