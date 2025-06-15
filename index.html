@@ -1,66 +1,80 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Scratchblocks SVG generator</title>
-  <script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
+<meta charset="UTF-8" />
+<title>Scratchblocks Viewer PNG statique</title>
+<script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
+<style>
+  body { font-family: sans-serif; padding: 20px; background: #fff; }
+  #outputImg { border: 1px solid #ccc; margin-top: 10px; }
+</style>
 </head>
-<body style="margin:0">
-  <script>
-    function getQueryParams() {
-      const hash = window.location.hash.substring(1);
-      const params = {};
-      hash.replace(/^\?/, '').split('&').forEach(part => {
-        const [key, value] = part.split('=').map(decodeURIComponent);
-        params[key] = value;
-      });
-      return params;
+<body>
+
+<h1>Scratchblocks Viewer (PNG statique côté client)</h1>
+<p>Script dans l’URL (hash) généré en image :</p>
+
+<img id="outputImg" alt="Script PNG" />
+
+<script>
+  function getParams() {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    return {
+      style: params.get('style') || 'scratch3',
+      script: params.get('script') || ''
+    };
+  }
+
+  async function svgToPng(svg) {
+    return new Promise((resolve) => {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const img = new Image();
+      const svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
+      const url = URL.createObjectURL(svgBlob);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = url;
+    });
+  }
+
+  async function renderScript() {
+    const {style, script} = getParams();
+    if(!script) {
+      document.body.insertAdjacentHTML('beforeend', '<p>Aucun script dans l\'URL.</p>');
+      return;
     }
+    const div = document.createElement('div');
+    div.className = 'scratchblocks';
+    div.textContent = decodeURIComponent(script);
+    document.body.appendChild(div);
 
-    async function inlineStyles(svg) {
-      const clone = svg.cloneNode(true);
-      // Trouver les styles appliqués et les inclure
-      const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
-      style.textContent = `
-        path, rect, circle, polygon, text, line {
-          stroke: none;
-        }
-        .sb3 { font-family: sans-serif; font-size: 12px; }
-      `;
-      clone.insertBefore(style, clone.firstChild);
-      return clone;
-    }
+    scratchblocks.renderMatching('.scratchblocks', { style });
 
-    async function renderAndOutputSVG() {
-      const params = getQueryParams();
-      const style = params.style || 'scratch3';
-      const script = params.script || '';
+    // Attendre que le SVG soit rendu
+    setTimeout(async () => {
+      const svg = div.querySelector('svg');
+      if(svg) {
+        const pngDataUrl = await svgToPng(svg);
+        const img = document.getElementById('outputImg');
+        img.src = pngDataUrl;
+        // Nettoyer la div temporaire
+        div.remove();
+      } else {
+        document.body.insertAdjacentHTML('beforeend', '<p>Erreur : SVG non généré.</p>');
+      }
+    }, 300);
+  }
 
-      const tempDiv = document.createElement('div');
-      tempDiv.className = 'scratchblocks';
-      tempDiv.textContent = script;
-      document.body.appendChild(tempDiv);
+  renderScript();
+</script>
 
-      scratchblocks.renderMatching('.scratchblocks', { style: style });
-
-      setTimeout(async () => {
-        const svg = tempDiv.querySelector('svg');
-        if (svg) {
-          const svgClone = await inlineStyles(svg);
-          const serializer = new XMLSerializer();
-          const svgString = serializer.serializeToString(svgClone);
-
-          // Renvoyer le SVG directement
-          document.open();
-          document.write(svgString);
-          document.close();
-        } else {
-          document.body.innerHTML = '<p>Erreur : aucun SVG généré.</p>';
-        }
-      }, 300);
-    }
-
-    renderAndOutputSVG();
-  </script>
 </body>
 </html>
