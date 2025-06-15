@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Scratchblocks PNG URL Generator</title>
-<script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
-<style>
-  body { font-family: sans-serif; padding: 20px; }
-  textarea { width: 100%; height: 100px; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Scratchblocks Image Generator</title>
+  <script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
+  <style>
+    body { margin: 0; padding: 10px; font-family: sans-serif; }
+  </style>
 </head>
 <body>
 
-<h1>URL de l'image générée</h1>
-<textarea id="outputUrl" readonly>Chargement...</textarea>
+<div id="container" style="display:none;"></div>
+<div id="link"></div>
 
 <script>
 function getParams() {
@@ -24,7 +23,7 @@ function getParams() {
   };
 }
 
-async function svgToPngUrl(svg) {
+async function svgToPngDataUrl(svg) {
   return new Promise((resolve) => {
     const svgData = new XMLSerializer().serializeToString(svg);
     const img = new Image();
@@ -35,6 +34,9 @@ async function svgToPngUrl(svg) {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
+      // Mettre un fond blanc pour éviter le fond noir
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL('image/png'));
@@ -43,35 +45,37 @@ async function svgToPngUrl(svg) {
   });
 }
 
-async function renderScript() {
-  const {style, script} = getParams();
+async function generate() {
+  const { style, script } = getParams();
   if (!script) {
-    document.getElementById('outputUrl').value = 'Aucun script fourni.';
+    document.getElementById('link').textContent = 'Erreur : aucun script.';
     return;
   }
 
+  const container = document.getElementById('container');
+  container.innerHTML = '';
   const div = document.createElement('div');
   div.className = 'scratchblocks';
   div.textContent = decodeURIComponent(script);
-  document.body.appendChild(div);
+  container.appendChild(div);
 
   scratchblocks.renderMatching('.scratchblocks', { style });
 
-  // Attendre le rendu SVG
   setTimeout(async () => {
-    const svg = div.querySelector('svg');
+    const svg = container.querySelector('svg');
     if (svg) {
-      const dataUrl = await svgToPngUrl(svg);
-      document.getElementById('outputUrl').value = dataUrl;
+      const dataUrl = await svgToPngDataUrl(svg);
+      const linkDiv = document.getElementById('link');
+      linkDiv.textContent = dataUrl;
     } else {
-      document.getElementById('outputUrl').value = 'Erreur : SVG non généré.';
+      document.getElementById('link').textContent = 'Erreur : SVG non généré.';
     }
-    div.remove();
   }, 300);
 }
 
-renderScript();
+generate();
 </script>
 
 </body>
 </html>
+
