@@ -30,7 +30,18 @@ function inlineStyles(svg) {
 }
 
 function svgToDataUrl(svg) {
-  const svgContent = inlineStyles(svg);
+  // Clone le SVG
+  const svgClone = svg.cloneNode(true);
+  // Ajoute les espaces de noms s’ils ne sont pas présents
+  if (!svgClone.getAttribute('xmlns')) {
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+  if (!svgClone.getAttribute('xmlns:xlink')) {
+    svgClone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  }
+
+  // Serialize
+  const svgContent = new XMLSerializer().serializeToString(svgClone);
   const encoded = encodeURIComponent(svgContent)
     .replace(/'/g, "%27")
     .replace(/"/g, "%22");
