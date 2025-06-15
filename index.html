@@ -23,15 +23,21 @@ function getParams() {
   };
 }
 
+function inlineStyles(svg) {
+  // Copie les styles CSS dans le SVG (scratchblocks génère déjà les couleurs inline normalement)
+  // On pourrait ajouter ici des styles globaux si nécessaire
+  return svg.outerHTML;
+}
+
 function svgToDataUrl(svg) {
-  const svgData = new XMLSerializer().serializeToString(svg);
-  const encoded = encodeURIComponent(svgData)
+  const svgContent = inlineStyles(svg);
+  const encoded = encodeURIComponent(svgContent)
     .replace(/'/g, "%27")
     .replace(/"/g, "%22");
   return `data:image/svg+xml;charset=utf-8,${encoded}`;
 }
 
-async function generate() {
+function generate() {
   const { style, script } = getParams();
   if (!script) {
     document.getElementById('link').textContent = 'Erreur : aucun script.';
