@@ -2,72 +2,70 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Scratchblocks SVG Generator</title>
+  <title>Scratchblocks SVG URL Generator</title>
   <script src="https://scratchblocks.github.io/js/scratchblocks-v3.4-min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 1em; }
-    #output { word-break: break-all; }
+    body { margin: 0; padding: 10px; font-family: sans-serif; }
   </style>
 </head>
 <body>
-  <div id="container" style="display:none;"></div>
-  <p>Lien de l’image SVG :</p>
-  <div id="output"></div>
 
-  <script>
-    function getParams() {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      return {
-        style: params.get('style') || 'scratch3',
-        script: params.get('script') || ''
-      };
+<div id="container" style="display:none;"></div>
+<div id="link"></div>
+
+<script>
+function getParams() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  return {
+    style: params.get('style') || 'scratch3',
+    script: params.get('script') || ''
+  };
+}
+
+function inlineStyles(svg) {
+  // Copie les styles CSS dans le SVG (scratchblocks génère déjà les couleurs inline normalement)
+  // On pourrait ajouter ici des styles globaux si nécessaire
+  return svg.outerHTML;
+}
+
+function svgToDataUrl(svg) {
+  const svgContent = inlineStyles(svg);
+  const encoded = encodeURIComponent(svgContent)
+    .replace(/'/g, "%27")
+    .replace(/"/g, "%22");
+  return `data:image/svg+xml;charset=utf-8,${encoded}`;
+}
+
+function generate() {
+  const { style, script } = getParams();
+  if (!script) {
+    document.getElementById('link').textContent = 'Erreur : aucun script.';
+    return;
+  }
+
+  const container = document.getElementById('container');
+  container.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'scratchblocks';
+  div.textContent = decodeURIComponent(script);
+  container.appendChild(div);
+
+  scratchblocks.renderMatching('.scratchblocks', { style });
+
+  setTimeout(() => {
+    const svg = container.querySelector('svg');
+    if (svg) {
+      const dataUrl = svgToDataUrl(svg);
+      document.getElementById('link').textContent = dataUrl;
+    } else {
+      document.getElementById('link').textContent = 'Erreur : SVG non généré.';
     }
+  }, 300);
+}
 
-    function createDataUrl(svg) {
-      // Clone le SVG et ajoute les espaces de noms si manquants
-      const clone = svg.cloneNode(true);
-      if (!clone.getAttribute('xmlns')) {
-        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      }
-      if (!clone.getAttribute('xmlns:xlink')) {
-        clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-      }
-      const svgText = new XMLSerializer().serializeToString(clone);
-      const encoded = encodeURIComponent(svgText)
-        .replace(/'/g, "%27")
-        .replace(/"/g, "%22");
-      return `data:image/svg+xml;charset=utf-8,${encoded}`;
-    }
+generate();
+</script>
 
-    function generate() {
-      const { style, script } = getParams();
-      if (!script) {
-        document.getElementById('output').textContent = 'Erreur : aucun script fourni.';
-        return;
-      }
-
-      const container = document.getElementById('container');
-      container.innerHTML = '';
-      const div = document.createElement('div');
-      div.className = 'scratchblocks';
-      div.textContent = decodeURIComponent(script);
-      container.appendChild(div);
-
-      scratchblocks.renderMatching('.scratchblocks', { style });
-
-      setTimeout(() => {
-        const svg = container.querySelector('svg');
-        if (svg) {
-          const url = createDataUrl(svg);
-          document.getElementById('output').textContent = url;
-        } else {
-          document.getElementById('output').textContent = 'Erreur : SVG non généré.';
-        }
-      }, 300);
-    }
-
-    generate();
-  </script>
 </body>
 </html>
